@@ -6,6 +6,13 @@ __pycache__/
 # C extensions
 *.so
 
+# VSCode temp edit buffers
+.history/
+
+# flexspin intermediate files
+*.binary
+*.p2asm
+
 # Distribution / packaging
 .Python
 build/

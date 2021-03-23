@@ -1,0 +1,207 @@
+'' =================================================================================================
+''
+''   File....... mpu9dof_demo.spin2
+''   Purpose.... Utility to interact with new MPU 9DOF object
+''   Authors.... Stephen M Moraco
+''               -- Copyright (c) 2021 Iron Sheep Productions, LLC
+''               -- see below for terms of use
+''   E-mail..... stephen@ironsheep.biz
+''   Started.... Mar 2021
+''   Updated.... 22 Mar 2021
+''
+'' =================================================================================================
+
+CON { timing }
+
+  CLK_FREQ = 200_000_000                                        ' system freq as a constant
+  MS_001   = CLK_FREQ / 1_000                                   ' ticks in 1ms
+  US_001   = CLK_FREQ / 1_000_000                               ' ticks in 1us
+
+  BR_TERM  = 230_400                                            ' terminal baud rate
+
+  _clkfreq = CLK_FREQ                                           ' set system clock
+
+CON { fixed io pins }
+
+  RX1      = 63  { I }                                          ' programming / debug
+  TX1      = 62  { O }
+
+  SF_CS    = 61  { O }                                          ' serial flash
+  SF_SCK   = 60  { O }
+  SF_SDO   = 59  { O }
+  SF_SDI   = 58  { I }
+
+  SD_SCK   = 61  { O }                                          ' sd card
+  SD_CS    = 60  { O }
+  SD_SDI   = 59  { O }
+  SD_SDO   = 58  { I }
+
+  SDA1     = 57  { IO }                                         ' i2c (optional)
+  SCL1     = 56  { IO }
+
+CON { app io pins }
+
+  MPU_9DOF_BASEPIN = 16
+
+CON { basic constants }
+
+  #true, ON, OFF                                                ' digital control
+  #0, NO, YES
+
+  TRIES = 1                                                     ' should not be needed!
+
+  #0, S_LIST, S_MATRIX                                          ' display styles
+
+  STYLE = S_MATRIX                                              ' selected style
+
+
+OBJ { our sensors }
+
+    mpu9dofSensor   : "isp_click_mpu_9dof"                      ' our device under test
+    term            : "jm_serial"                               ' terminal output
+
+
+VAR
+    long    cog
+
+PUB main()
+
+    setup()
+    wait_for_terminal(false)
+
+    quietSensor() ' set pins to output low... so we can set LA trigger
+
+    term.fstr0(string("\r\nMeasure Panel Started!\r\n\r\n"))
+
+    term.fstr0(string("initSensor()\r\n"))
+    initSensor()    ' start our i2c 9DOF sensor
+
+    term.fstr0(string("resetDevice()\r\n"))
+    mpu9dofSensor.resetDevice()    ' start our i2c light sensor
+
+    term.fstr0(string("demo()\r\n"))
+    demo(1)
+
+    term.fstr0(string("\r\nDone\r\n"))
+
+PUB demo(loopCt) | accel_x, accel_y, accel_z, temperature, gyro_x, gyro_y, gyro_z, mag_x, mag_y, mag_z
+    if loopCt <= 0
+        loopCt := 1
+
+    ' loop 1 - N times
+    repeat loopCt
+        accel_x, accel_y, accel_z := mpu9dofSensor.readAccel()
+        waitms(10)
+        gyro_x, gyro_y, gyro_z := mpu9dofSensor.readGyro()
+        waitms(10)
+        mag_x, mag_y, mag_z := mpu9dofSensor.readMag()
+        waitms(10)
+        temperature := mpu9dofSensor.readTemperature()
+        waitms(10)
+
+        term.fstr0(string(" Accel X : %d   |   Gyro X : %d   |   Mag X : %d \r\n", accel_x, gyro_x, mag_x ))
+        term.fstr0(string(" Accel Y : %d   |   Gyro Y : %d   |   Mag Y : %d \r\n", accel_y, gyro_y, mag_y ))
+        term.fstr0(string(" Accel Z : %d   |   Gyro Z : %d   |   Mag Z : %d \r\n", accel_z, gyro_z, mag_z ))
+        term.fstr0(string("- - - - - - - - - - - - - - - - - - - - - - - - - - - - - -\r\n" ))
+        term.fstr0(string("Temperature: %.2f C\r\n", temperature ))
+        term.fstr0(string("- - - - - - - - - - - - - - - - - - - - - - - - - - - - - -\r\n" ))
+        waitms(1000)
+
+PUB mainLight() | success, value, freqValue, freqValue2
+
+    setup()
+    wait_for_terminal(false)
+
+    quietSensor() ' set pins to output low... so we can set LA trigger
+
+    term.fstr0(string("\r\nMeasure Panel Started!\r\n\r\n"))
+
+    'freqValue, freqValue2 := lightSensor.getClockFreq()
+    term.fstr1(string("Freq1: %d\r\n"), freqValue)
+    term.fstr1(string("Freq2: %d\r\n"), freqValue2)
+
+
+    initSensor()    ' start our i2c light sensor
+    'drivePinsForLATest()
+
+    'success := lightSensor.powerOn()
+    if(success)
+        term.fstr0(string("Power-on worked\r\n"))
+    else
+        term.fstr0(string("Power-on ERROR\r\n"))
+
+    term.fstr0(string("Measure then read sensor\r\n"))
+    'success, value := lightSensor.readOnce()
+    term.fstr1(string("Success: %d\r\n"), success)
+    term.fstr1(string("Value: %8x\r\n"), value)
+
+    term.fstr0(string("\r\nDone\r\n"))
+
+
+PRI quietSensor()
+
+    mpu9dofSensor.init(MPU_9DOF_BASEPIN)  ' set pins to output low... so we can set LA trigger
+
+
+PRI initSensor() | deviceFound
+
+    term.fstr0(string("Setup...\r\n"))
+    mpu9dofSensor.start(MPU_9DOF_BASEPIN)                                           ' i2c @ 100kHz, external pull-ups
+
+    term.fstr0(string("ID device address...\r\n"))
+    deviceFound := mpu9dofSensor.idDevice()
+    if(deviceFound == mpu9dofSensor.DVC_ADDR0)
+        term.fstr0(string("Found Addr0\r\n"))
+
+    elseif(deviceFound == mpu9dofSensor.DVC_ADDR1)
+        term.fstr0(string("Found Addr1\r\n"))
+
+    else
+        term.fstr0(string("Found no devices\r\n"))
+
+
+PRI setup()
+
+  term.start(BR_TERM)                                           ' start terminal io
+
+
+PRI wait_for_terminal(clear)
+
+  ' Download to RAM with F10
+  ' F12 to open PST
+  ' Click [Enable]
+  ' Press Enter
+
+  term.rxflush()
+  term.rx()
+  if (clear)
+    term.tx(term.CLS)
+
+
+CON { license }
+
+{{
+ -------------------------------------------------------------------------------------------------
+  MIT License
+
+  Copyright (c) 2020 Iron Sheep Productions, LLC
+
+  Permission is hereby granted, free of charge, to any person obtaining a copy
+  of this software and associated documentation files (the "Software"), to deal
+  in the Software without restriction, including without limitation the rights
+  to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+  copies of the Software, and to permit persons to whom the Software is
+  furnished to do so, subject to the following conditions:
+
+  The above copyright notice and this permission notice shall be included in all
+  copies or substantial portions of the Software.
+
+  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+  IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+  FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+  AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+  LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+  SOFTWARE.
+ =================================================================================================
+}}
