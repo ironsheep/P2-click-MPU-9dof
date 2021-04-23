@@ -41,7 +41,7 @@ CON { fixed io pins }
 
 CON { app io pins }
 
-  MPU_9DOF_BASEPIN = 16
+  MPU_9DOF_BASEPIN = 16     ' on P2 pins 16-23
 
 CON { basic constants }
 
@@ -64,23 +64,20 @@ OBJ { our sensors }
 VAR
     long    cog
 
-PUB main()
+PUB main() | statusOK
 
     setup()
-    wait_for_terminal(false)
-
     quietSensor() ' set pins to output low... so we can set LA trigger
 
-    term.fstr0(string("\r\nMeasure Panel Started!\r\n\r\n"))
+    wait_for_terminal(false)
+
+    term.fstr0(string("\r\nAccess MPU 9DOF ...\r\n\r\n"))
 
     term.fstr0(string("initSensor()\r\n"))
-    initSensor()    ' start our i2c 9DOF sensor
-
-    term.fstr0(string("resetDevice()\r\n"))
-    mpu9dofSensor.resetDevice()    ' start our i2c light sensor
-
-    term.fstr0(string("demo()\r\n"))
-    demo(1)
+    statusOK := initSensor()    ' start our i2c MPU 9DOF sensor
+    if statusOK
+        term.fstr0(string("demo()\r\n"))
+        demo(1)
 
     term.fstr0(string("\r\nDone\r\n"))
 
@@ -99,65 +96,35 @@ PUB demo(loopCt) | accel_x, accel_y, accel_z, temperature, gyro_x, gyro_y, gyro_
         temperature := mpu9dofSensor.readTemperature()
         waitms(10)
 
-        term.fstr0(string(" Accel X : %d   |   Gyro X : %d   |   Mag X : %d \r\n", accel_x, gyro_x, mag_x ))
-        term.fstr0(string(" Accel Y : %d   |   Gyro Y : %d   |   Mag Y : %d \r\n", accel_y, gyro_y, mag_y ))
-        term.fstr0(string(" Accel Z : %d   |   Gyro Z : %d   |   Mag Z : %d \r\n", accel_z, gyro_z, mag_z ))
+        term.fstr3(string(" Accel X : %d   |   Gyro X : %d   |   Mag X : %d \r\n"), accel_x, gyro_x, mag_x )
+        term.fstr3(string(" Accel Y : %d   |   Gyro Y : %d   |   Mag Y : %d \r\n"), accel_y, gyro_y, mag_y )
+        term.fstr3(string(" Accel Z : %d   |   Gyro Z : %d   |   Mag Z : %d \r\n"), accel_z, gyro_z, mag_z )
         term.fstr0(string("- - - - - - - - - - - - - - - - - - - - - - - - - - - - - -\r\n" ))
-        term.fstr0(string("Temperature: %.2f C\r\n", temperature ))
+        term.fstr1(string("Temperature: %.2f C\r\n"), temperature )
         term.fstr0(string("- - - - - - - - - - - - - - - - - - - - - - - - - - - - - -\r\n" ))
         waitms(1000)
 
-PUB mainLight() | success, value, freqValue, freqValue2
-
-    setup()
-    wait_for_terminal(false)
-
-    quietSensor() ' set pins to output low... so we can set LA trigger
-
-    term.fstr0(string("\r\nMeasure Panel Started!\r\n\r\n"))
-
-    'freqValue, freqValue2 := lightSensor.getClockFreq()
-    term.fstr1(string("Freq1: %d\r\n"), freqValue)
-    term.fstr1(string("Freq2: %d\r\n"), freqValue2)
-
-
-    initSensor()    ' start our i2c light sensor
-    'drivePinsForLATest()
-
-    'success := lightSensor.powerOn()
-    if(success)
-        term.fstr0(string("Power-on worked\r\n"))
-    else
-        term.fstr0(string("Power-on ERROR\r\n"))
-
-    term.fstr0(string("Measure then read sensor\r\n"))
-    'success, value := lightSensor.readOnce()
-    term.fstr1(string("Success: %d\r\n"), success)
-    term.fstr1(string("Value: %8x\r\n"), value)
-
-    term.fstr0(string("\r\nDone\r\n"))
-
-
 PRI quietSensor()
 
+    term.fstr0(string("Quiesce...\r\n"))
     mpu9dofSensor.init(MPU_9DOF_BASEPIN)  ' set pins to output low... so we can set LA trigger
 
 
-PRI initSensor() | deviceFound
+PRI initSensor() : ok | deviceFound
 
     term.fstr0(string("Setup...\r\n"))
-    mpu9dofSensor.start(MPU_9DOF_BASEPIN)                                           ' i2c @ 100kHz, external pull-ups
+    mpu9dofSensor.start(MPU_9DOF_BASEPIN)                                           ' i2c @ 100kHz, no pull-ups
 
     term.fstr0(string("ID device address...\r\n"))
     deviceFound := mpu9dofSensor.idDevice()
+    ok := true
     if(deviceFound == mpu9dofSensor.DVC_ADDR0)
         term.fstr0(string("Found Addr0\r\n"))
-
     elseif(deviceFound == mpu9dofSensor.DVC_ADDR1)
         term.fstr0(string("Found Addr1\r\n"))
-
     else
-        term.fstr0(string("Found no devices\r\n"))
+        term.fstr0(string("ERROR: Found no devices\r\n"))
+        ok := false
 
 
 PRI setup()

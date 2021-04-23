@@ -8,5 +8,6 @@
         "**/*.p2asm": true,
         "**/*.binary": true
     },
+    "topLevel": "mpu9dof_demo",
     "explorerExclude.backup": null
 }
