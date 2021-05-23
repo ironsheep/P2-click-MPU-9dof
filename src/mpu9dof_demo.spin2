@@ -58,7 +58,7 @@ CON { basic constants }
 OBJ { our sensors }
 
     mpu9dofSensor   : "isp_click_mpu_9dof"                      ' our device under test
-    term            : "jm_serial"                               ' terminal output
+    term            : "jm_serial_shared"                               ' terminal output
 
 
 VAR
@@ -79,9 +79,10 @@ PUB main() | statusOK
         term.fstr0(string("demo()\r\n"))
         demo(1)
 
+    tearDown()  ' stop any cogs, if needed
     term.fstr0(string("\r\nDone\r\n"))
 
-PUB demo(loopCt) | accel_x, accel_y, accel_z, temperature, gyro_x, gyro_y, gyro_z, mag_x, mag_y, mag_z
+PUB demo(loopCt) | accel_x, accel_y, accel_z, temperatureInC, decimalInC, gyro_x, gyro_y, gyro_z, mag_x, mag_y, mag_z
     if loopCt <= 0
         loopCt := 1
 
@@ -93,14 +94,14 @@ PUB demo(loopCt) | accel_x, accel_y, accel_z, temperature, gyro_x, gyro_y, gyro_
         waitms(10)
         mag_x, mag_y, mag_z := mpu9dofSensor.readMag()
         waitms(10)
-        temperature := mpu9dofSensor.readTemperature()
+        temperatureInC, decimalInC := mpu9dofSensor.readTemperature()
         waitms(10)
 
         term.fstr3(string(" Accel X : %d   |   Gyro X : %d   |   Mag X : %d \r\n"), accel_x, gyro_x, mag_x )
         term.fstr3(string(" Accel Y : %d   |   Gyro Y : %d   |   Mag Y : %d \r\n"), accel_y, gyro_y, mag_y )
         term.fstr3(string(" Accel Z : %d   |   Gyro Z : %d   |   Mag Z : %d \r\n"), accel_z, gyro_z, mag_z )
         term.fstr0(string("- - - - - - - - - - - - - - - - - - - - - - - - - - - - - -\r\n" ))
-        term.fstr1(string("Temperature: %.2f C\r\n"), temperature )
+        term.fstr2(string("Temperature: %d.%d C\r\n"), temperatureInC, decimalInC)
         term.fstr0(string("- - - - - - - - - - - - - - - - - - - - - - - - - - - - - -\r\n" ))
         waitms(1000)
 
@@ -111,25 +112,30 @@ PRI quietSensor()
 
 
 PRI initSensor() : ok | deviceFound
-
+    ' find and configure our mpu9dof device
     term.fstr0(string("Setup...\r\n"))
     mpu9dofSensor.start(MPU_9DOF_BASEPIN)                                           ' i2c @ 100kHz, no pull-ups
 
     term.fstr0(string("ID device address...\r\n"))
     deviceFound := mpu9dofSensor.idDevice()
     ok := true
-    if(deviceFound == mpu9dofSensor.DVC_ADDR0)
-        term.fstr0(string("Found Addr0\r\n"))
-    elseif(deviceFound == mpu9dofSensor.DVC_ADDR1)
-        term.fstr0(string("Found Addr1\r\n"))
+    if(deviceFound <> mpu9dofSensor.DVC_NOT_FOUND)
+        term.fstr1(string("Found Addr-%d\r\n"), deviceFound - 1)
     else
         term.fstr0(string("ERROR: Found no devices\r\n"))
         ok := false
 
+    if(ok)
+        mpu9dofSensor.configDefault()
+
 
 PRI setup()
+    ' start anything that needs to be
+  term.start(BR_TERM)       ' start terminal io
 
-  term.start(BR_TERM)                                           ' start terminal io
+PRI tearDown()
+    ' stop anything that needs to be...
+    mpu9dofSensor.stop()    ' pull ourself off the i2c bus
 
 
 PRI wait_for_terminal(clear)
