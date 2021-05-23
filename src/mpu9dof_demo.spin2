@@ -1,13 +1,13 @@
 '' =================================================================================================
 ''
 ''   File....... mpu9dof_demo.spin2
-''   Purpose.... Utility to interact with new MPU 9DOF object
+''   Purpose.... Utility to demonstration of interaction with new MPU 9DOF object
 ''   Authors.... Stephen M Moraco
 ''               -- Copyright (c) 2021 Iron Sheep Productions, LLC
 ''               -- see below for terms of use
 ''   E-mail..... stephen@ironsheep.biz
 ''   Started.... Mar 2021
-''   Updated.... 22 Mar 2021
+''   Updated.... 23 May 2021
 ''
 '' =================================================================================================
 
@@ -58,14 +58,14 @@ CON { basic constants }
 OBJ { our sensors }
 
     mpu9dofSensor   : "isp_click_mpu_9dof"                      ' our device under test
-    term            : "jm_serial_shared"                               ' terminal output
+    term            : "jm_serial_singleton"                     ' terminal output
 
 
 VAR
     long    cog
 
 PUB main() | statusOK
-
+    '' Main entry point of MPU 9DOF demo
     setup()
     quietSensor() ' set pins to output low... so we can set LA trigger
 
@@ -83,6 +83,7 @@ PUB main() | statusOK
     term.fstr0(string("\r\nDone\r\n"))
 
 PUB demo(loopCt) | accel_x, accel_y, accel_z, temperatureInC, decimalInC, gyro_x, gyro_y, gyro_z, mag_x, mag_y, mag_z
+    '' Actual MPU 9DOF demo - read regs and display values
     if loopCt <= 0
         loopCt := 1
 
