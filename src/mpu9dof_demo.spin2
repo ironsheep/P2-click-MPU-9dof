@@ -77,12 +77,12 @@ PUB main() | statusOK
     statusOK := initSensor()    ' start our i2c MPU 9DOF sensor
     if statusOK
         term.fstr0(string("demo()\r\n"))
-        demo(1)
+        demo1(1)
 
     tearDown()  ' stop any cogs, if needed
     term.fstr0(string("\r\nDone\r\n"))
 
-PUB demo(loopCt) | accel_x, accel_y, accel_z, temperatureInC, decimalInC, gyro_x, gyro_y, gyro_z, mag_x, mag_y, mag_z
+PUB demo0(loopCt) | accel_x, accel_y, accel_z, temperatureInC, decimalInC, gyro_x, gyro_y, gyro_z, mag_x, mag_y, mag_z
     '' Actual MPU 9DOF demo - read regs and display values
     if loopCt <= 0
         loopCt := 1
@@ -104,6 +104,17 @@ PUB demo(loopCt) | accel_x, accel_y, accel_z, temperatureInC, decimalInC, gyro_x
         term.fstr0(string("- - - - - - - - - - - - - - - - - - - - - - - - - - - - - -\r\n" ))
         term.fstr2(string("Temperature: %d.%d C\r\n"), temperatureInC, decimalInC)
         term.fstr0(string("- - - - - - - - - - - - - - - - - - - - - - - - - - - - - -\r\n" ))
+        waitms(1000)
+
+PUB demo1(loopCt) | accel_x, accel_y, accel_z, gyro_x, gyro_y, gyro_z
+    if loopCt <= 0
+        loopCt := 1
+
+    ' loop 1 - N times
+    repeat loopCt
+
+        accel_x, accel_y, accel_z := mpu9dofSensor.readAccel()
+        gyro_x, gyro_y, gyro_z := mpu9dofSensor.readGyro()
         waitms(1000)
 
 PRI quietSensor()

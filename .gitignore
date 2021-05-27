@@ -3,6 +3,10 @@ __pycache__/
 *.py[cod]
 *$py.class
 
+# documents we wont version
+docs/slva704.pdf
+
+
 # C extensions
 *.so
 
