@@ -283,6 +283,12 @@ pub fstr6(p_str, arg1, arg2, arg3, arg4, arg5, arg6)
 
   format(p_str, @arg1)
 
+pub fstr7(p_str, arg1, arg2, arg3, arg4, arg5, arg6, arg7)
+
+'' Emit string with formatting characters and seven arguments.
+
+  format(p_str, @arg1)
+
 
 pub format(p_str, p_args) | idx, c, asc, field, digits
 

@@ -76,8 +76,12 @@ PUB main() | statusOK
     term.fstr0(string("initSensor()\r\n"))
     statusOK := initSensor()    ' start our i2c MPU 9DOF sensor
     if statusOK
-        term.fstr0(string("demo()\r\n"))
-        demo1(6)
+        term.fstr0(string("calibration()\r\n"))
+        calibrateSensor()
+
+        'term.fstr0(string("demo()\r\n"))
+        'resetSensor(statusOK, TRUE) ' TRUE says we did run calibrate, before hand
+        'demo1(6)
 
     tearDown()  ' stop any cogs, if needed
     term.fstr0(string("\r\nDone\r\n"))
@@ -98,25 +102,46 @@ PUB demo0(loopCt) | accel_x, accel_y, accel_z, temperatureInC, decimalInC, gyro_
         temperatureInC, decimalInC := mpu9dofSensor.readTemperature()
         waitms(10)
 
-        term.fstr3(string(" Accel X : %d   |   Gyro X : %d   |   Mag X : %d \r\n"), accel_x, gyro_x, mag_x )
-        term.fstr3(string(" Accel Y : %d   |   Gyro Y : %d   |   Mag Y : %d \r\n"), accel_y, gyro_y, mag_y )
-        term.fstr3(string(" Accel Z : %d   |   Gyro Z : %d   |   Mag Z : %d \r\n"), accel_z, gyro_z, mag_z )
-        term.fstr0(string("- - - - - - - - - - - - - - - - - - - - - - - - - - - - - -\r\n" ))
+        term.fstr3(string(" Accel X : %d   |   Gyro X : %d   |   Mag X : %d \r\n"), accel_x, gyro_x, mag_x)
+        term.fstr3(string(" Accel Y : %d   |   Gyro Y : %d   |   Mag Y : %d \r\n"), accel_y, gyro_y, mag_y)
+        term.fstr3(string(" Accel Z : %d   |   Gyro Z : %d   |   Mag Z : %d \r\n"), accel_z, gyro_z, mag_z)
+        term.fstr0(string("- - - - - - - - - - - - - - - - - - - - - - - - - - - - - -\r\n"))
         term.fstr2(string("Temperature: %d.%d C\r\n"), temperatureInC, decimalInC)
-        term.fstr0(string("- - - - - - - - - - - - - - - - - - - - - - - - - - - - - -\r\n" ))
+        term.fstr0(string("- - - - - - - - - - - - - - - - - - - - - - - - - - - - - -\r\n"))
         waitms(3000)
 
-PUB demo1(loopCt) | accel_x, accel_y, accel_z, gyro_x, gyro_y, gyro_z, mag_x, mag_y, mag_z
+DAT { sample names }
+
+sample0 byte    "top",0
+sample1 byte    "toLeft",0
+sample2 byte    "toRight",0
+sample3 byte    "toFront",0
+sample4 byte    "toBack",0
+sample5 byte    "bottom",0
+
+sampleNames long    @sample0, @sample1, @sample2, @sample3, @sample4, @sample5
+
+PUB demo1(loopCt) | pName, loopIndex, accel_x, accel_y, accel_z, gyro_x, gyro_y, gyro_z, mag_x, mag_y, mag_z
     if loopCt <= 0
         loopCt := 1
 
     ' loop 1 - N times
-    repeat loopCt
-
+    pName := long [@sampleNames][0]
+    term.fstr2(string("\r\n-->  Set Up:  %d:%s\r\n"), 0+1, pName)
+    waitms(3000)
+    repeat loopIndex from 0 to loopCt - 1
+        pName := long [@sampleNames][loopIndex]
         accel_x, accel_y, accel_z := mpu9dofSensor.readAccel()
         gyro_x, gyro_y, gyro_z := mpu9dofSensor.readGyro()
         mag_x, mag_y, mag_z := mpu9dofSensor.readMag()
-        waitms(1000)
+        term.fstr2(string("\r\n- %d:%s  - - - - - - - - - - -\r\n"), loopIndex+1, pName)
+        term.fstr3(string(" Accel X : %d   |   Gyro X : %d   |   Mag X : %d \r\n"), accel_x, gyro_x, mag_x)
+        term.fstr3(string(" Accel Y : %d   |   Gyro Y : %d   |   Mag Y : %d \r\n"), accel_y, gyro_y, mag_y)
+        term.fstr3(string(" Accel Z : %d   |   Gyro Z : %d   |   Mag Z : %d \r\n"), accel_z, gyro_z, mag_z)
+        term.fstr0(string("- - - - - - - - - - - - - - - - - - - - - - - - - - - - - -\r\n"))
+        pName := long [@sampleNames][loopIndex+1]
+        term.fstr2(string("\r\n-->  Set Up:  %d:%s\r\n"), loopIndex+2, pName)
+        waitms(3000)
 
 PRI quietSensor()
 
@@ -138,9 +163,23 @@ PRI initSensor() : ok | deviceFound
         term.fstr0(string("ERROR: Found no devices\r\n"))
         ok := false
 
-    if(ok)
-        mpu9dofSensor.configDefault()
+DAT { cal data }
 
+accelBiasXYZ long    0[3]
+gyroBiasXYZ long    0[3]
+
+PUB calibrateSensor()
+    ' put sensor thru calibration paces
+    mpu9dofSensor.calibrateMPU9150(@gyroBiasXYZ, @accelBiasXYZ)
+    term.fstr0(string("\r\n- Calibration Offsets  - - - - - - - - - - - - - - - -\r\n"))
+    term.fstr2(string(" Accel X : %d   |   Gyro X : %d\r\n"), LONG [@accelBiasXYZ][0], LONG [@gyroBiasXYZ][0])
+    term.fstr2(string(" Accel Y : %d   |   Gyro Y : %d\r\n"), LONG [@accelBiasXYZ][1], LONG [@gyroBiasXYZ][1])
+    term.fstr2(string(" Accel Z : %d   |   Gyro Z : %d\r\n"), LONG [@accelBiasXYZ][2], LONG [@gyroBiasXYZ][2])
+    term.fstr0(string("- - - - - - - - - - - - - - - - - - - - - - - - - - - - - -\r\n"))
+
+PRI resetSensor(ok, bDidCalibrate)
+    if(ok)
+        mpu9dofSensor.configDefault(bDidCalibrate)
 
 PRI setup()
     ' start anything that needs to be
