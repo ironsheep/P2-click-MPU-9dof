@@ -76,9 +76,9 @@ PUB main() | statusOK
     term.fstr0(string("initSensor()\r\n"))
     statusOK := initSensor()    ' start our i2c MPU 9DOF sensor
     if statusOK
-        'term.fstr0(string("calibration()\r\n"))
-        'calibrateSensor()
-        'term.fstr0(string("\r\ncalibration() Complete\r\n\r\n"))
+        term.fstr0(string("calibration()\r\n"))
+        calibrateSensor()
+        term.fstr0(string("\r\ncalibration() Complete\r\n\r\n"))
 
         term.fstr0(string("demo()\r\n"))
         resetSensor(statusOK)
@@ -87,7 +87,7 @@ PUB main() | statusOK
     tearDown()  ' stop any cogs, if needed
     term.fstr0(string("\r\nDone\r\n"))
 
-PUB demo0(loopCt) | accel_x, accel_y, accel_z, temperatureInC, decimalInC, gyro_x, gyro_y, gyro_z, mag_x, mag_y, mag_z, tmpIntX, tmpDecimalX, tmpIntY, tmpDecimalY, tmpIntZ, tmpDecimalZ
+PUB demo0(loopCt) | accel_x, accel_y, accel_z, temperatureInC, decimalInC, gyro_x, gyro_y, gyro_z, mag_x, mag_y, mag_z
     '' Actual MPU 9DOF demo - read regs and display values
     if loopCt <= 0
         loopCt := 1
@@ -103,9 +103,9 @@ PUB demo0(loopCt) | accel_x, accel_y, accel_z, temperatureInC, decimalInC, gyro_
         temperatureInC, decimalInC := mpu9dofSensor.readTemperature()
         waitms(10)
 
-        tmpIntX, tmpDecimalX := unscale(accel_x, 1000)
-        tmpIntY, tmpDecimalY := unscale(accel_x, 1000)
-        tmpIntZ, tmpDecimalZ := unscale(accel_x, 1000)
+        tmpIntX, tmpDecimalX, pSignX := unscale(accel_x, 1000)
+        tmpIntY, tmpDecimalY, pSignY := unscale(accel_x, 1000)
+        tmpIntZ, tmpDecimalZ, pSignZ := unscale(accel_x, 1000)
         term.fstr4(string(" Accel X : %d.%d   |   Gyro X : %d   |   Mag X : %d \r\n"), tmpIntX, tmpDecimalX, gyro_x, mag_x)
         term.fstr4(string(" Accel Y : %d.%d    |   Gyro Y : %d   |   Mag Y : %d \r\n"), tmpIntY, tmpDecimalY, gyro_y, mag_y)
         term.fstr4(string(" Accel Z : %d.%d    |   Gyro Z : %d   |   Mag Z : %d \r\n"), tmpIntZ, tmpDecimalZ , gyro_z, mag_z)
@@ -114,14 +114,20 @@ PUB demo0(loopCt) | accel_x, accel_y, accel_z, temperatureInC, decimalInC, gyro_
         term.fstr0(string("- - - - - - - - - - - - - - - - - - - - - - - - - - - - - -\r\n"))
         waitms(3000)
 
-PRI unscale(value, scale) : intPart, decimalPart
+DAT { misc messages }
+
+minusMsg    BYTE    "-",0
+plusMsg    BYTE    0
+
+floatInterp BYTE    0[30]
+
+PRI unscale(value, scale) : intPart, decimalPart, pSign
     intPart := value / scale
     decimalPart := value // scale
-    if value < 0
-        intPart := 0 - intPart
+    pSign := (value < 0) ? @minusMsg : @plusMsg
     if decimalPart < 0
         decimalPart := 0 - decimalPart
-    term.fstr4(string("* Value %d scale(%d) -> %d.%d\r\n"), value, scale, intPart, decimalPart)
+    term.fstr5(string("* Value %d scale(%d) -> %s%d.%d\r\n"), value, scale, pSign, intPart, decimalPart)
 
 DAT { sample names }
 
@@ -132,31 +138,42 @@ sample3 byte    "toFront",0
 sample4 byte    "toBack",0
 sample5 byte    "bottom",0
 
+' float conversion crap
+tmpIntX     long    0
+tmpDecimalX long    0
+pSignX      long    0
+tmpIntY     long    0
+tmpDecimalY long    0
+pSignY      long    0
+tmpIntZ     long    0
+tmpDecimalZ long    0
+pSignZ      long    0
+
 sampleNames LONG    @sample0, @sample1, @sample2, @sample3, @sample4, @sample5
 
-PUB demo1(loopCt) | pName, loopIndex, accel_x, accel_y, accel_z, gyro_x, gyro_y, gyro_z, mag_x, mag_y, mag_z, tmpIntX, tmpDecimalX, tmpIntY, tmpDecimalY, tmpIntZ, tmpDecimalZ
+PUB demo1(loopCt) | pName, loopIndex, accel_x, accel_y, accel_z, gyro_x, gyro_y, gyro_z, mag_x, mag_y, mag_z
     if loopCt <= 0
         loopCt := 1
 
     ' loop 1 - N times
     pName := LONG [@sampleNames][0]
-    term.fstr2(string("\r\n-->  Set Up:  %d:%s\r\n"), 0+1, pName)
+    term.fstr1(string("\r\n-->  Set Up:  %d\r\n"), 0+1)
     waitms(3000)
     repeat loopIndex from 0 to loopCt - 1
         pName := LONG [@sampleNames][loopIndex]
         accel_x, accel_y, accel_z := mpu9dofSensor.readAccelRaw()
         gyro_x, gyro_y, gyro_z := mpu9dofSensor.readGyroRaw()
         mag_x, mag_y, mag_z := mpu9dofSensor.readMagRaw()
-        tmpIntX, tmpDecimalX := unscale(accel_x, 1000)
-        tmpIntY, tmpDecimalY := unscale(accel_x, 1000)
-        tmpIntZ, tmpDecimalZ := unscale(accel_x, 1000)
-        term.fstr2(string("\r\n- %d:%s  - - - - - - - - - - -\r\n"), loopIndex+1, pName)
-        term.fstr4(string(" Accel X : %d.%d   |   Gyro X : %d   |   Mag X : %d \r\n"), tmpIntX, tmpDecimalX, gyro_x, mag_x)
-        term.fstr4(string(" Accel Y : %d.%d   |   Gyro Y : %d   |   Mag Y : %d \r\n"), tmpIntY, tmpDecimalY, gyro_y, mag_y)
-        term.fstr4(string(" Accel Z : %d.%d   |   Gyro Z : %d   |   Mag Z : %d \r\n"), tmpIntZ, tmpDecimalZ, gyro_z, mag_z)
+        tmpIntX, tmpDecimalX, pSignX := unscale(accel_x, 1000)
+        tmpIntY, tmpDecimalY, pSignY := unscale(accel_y, 1000)
+        tmpIntZ, tmpDecimalZ, pSignZ := unscale(accel_z, 1000)
+        term.fstr1(string("\r\n- %d  - - - - - - - - - - -\r\n"), loopIndex+1)
+        term.fstr5(string(" Accel X : %s%d.%d   |   Gyro X : %d   |   Mag X : %d \r\n"), pSignX, tmpIntX, tmpDecimalX, gyro_x, mag_x)
+        term.fstr5(string(" Accel Y : %s%d.%d   |   Gyro Y : %d   |   Mag Y : %d \r\n"), pSignY, tmpIntY, tmpDecimalY, gyro_y, mag_y)
+        term.fstr5(string(" Accel Z : %s%d.%d   |   Gyro Z : %d   |   Mag Z : %d \r\n"), pSignZ, tmpIntZ, tmpDecimalZ, gyro_z, mag_z)
         term.fstr0(string("- - - - - - - - - - - - - - - - - - - - - - - - - - - - - -\r\n"))
         pName := LONG [@sampleNames][loopIndex+1]
-        term.fstr2(string("\r\n-->  Set Up:  %d:%s\r\n"), loopIndex+2, pName)
+        term.fstr1(string("\r\n-->  Set Up:  %d\r\n"), loopIndex+2)
         waitms(3000)
 
 PRI quietSensor()
