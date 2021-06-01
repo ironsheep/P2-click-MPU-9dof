@@ -5,6 +5,7 @@ __pycache__/
 
 # documents we wont version
 docs/HOLD/*
+docs/REF/*
 
 
 # C extensions
