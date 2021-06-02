@@ -19,6 +19,13 @@ The goals of this project are:
 What's completed and what's not:
 
 ```
+02 Jun 2021 17:35
+- Add detection of MPU9150, MPU9250, and MPU9255
+- Alter die temp algorithm to be correct by chip model
+- Alter mag scaling to be correct by chip model
+- Calibration appears to work but more testing needed
+Known Issue
+- Get Accel/Gyro conversion from raw still not correct
 27 May 2021 14:02
 - I/O is working better and sign propagation of reading  has been corrected.
 25 May 2021
