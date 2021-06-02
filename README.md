@@ -23,7 +23,7 @@ What's completed and what's not:
 - Add detection of MPU9150, MPU9250, and MPU9255
 - Alter die temp algorithm to be correct by chip model
 - Alter mag scaling to be correct by chip model
-- Calibration appears to work but more testing needed
+- Calibration appears to work but still testing
 Known Issue
 - Get Accel/Gyro conversion from raw still not correct
 27 May 2021 14:02
@@ -35,10 +35,7 @@ Known Issue
 
 ## Up Next
 
-- Port Calibration from C example
 - Convert floating math for row/pitch/yaw calcs into spin2
-
-
 
 ---
 
