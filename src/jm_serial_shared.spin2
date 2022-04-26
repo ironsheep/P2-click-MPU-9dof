@@ -1,6 +1,6 @@
 '' =================================================================================================
 ''
-''   File....... jm_serial.spin2
+''   File....... jm_serial.spin2 w/MODS
 ''   Purpose.... True mode, unbuffererd serial coms using smart pins
 ''               -- same features as original P1 FDS with minor enhancements/changes
 ''   Authors.... Eric Smith, Chip Gracey, and Jon McPhalen
@@ -14,7 +14,7 @@
 {
 
    Note: The dec(), bin(), and hex() methods will no longer require the digits parameter as
-         in older versions of FullDuplexSerial. Use fdec(), fbin(), and fhex() for code that
+         in older versions of FullDuplexSerial. Use fwdec(), fwbin(), and fwhex() for code that
          requires a specific field width.
 
 }
@@ -396,7 +396,7 @@ pub dec(value)
   str(nstr.itoa(value, 10, 0))
 
 
-pub fdec(value, digits)
+pub fwdec(value, digits)
 
 '' Emit value as decimal using fixed # of digits
 '' -- may add leading zeros
@@ -441,7 +441,7 @@ pub hex(value)
   str(nstr.itoa(value, 16, 0))
 
 
-pub fhex(value, digits)
+pub fwhex(value, digits)
 
 '' Emit value as hexadecimal using fixed # of digits
 
@@ -510,7 +510,7 @@ pub bin(value)
   str(nstr.itoa(value, 2, 0))
 
 
-pub fbin(value, digits)
+pub fwbin(value, digits)
 
 '' Emit value as binary using fixed # of digits
 
