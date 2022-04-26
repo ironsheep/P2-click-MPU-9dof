@@ -20,6 +20,7 @@ The goals of this project are:
 What's completed and what's not:
 
 ```
+
 24 Apr 2022 14:00
 - Add demo showing sensor values on HDMI display
 - Fix temperature access method

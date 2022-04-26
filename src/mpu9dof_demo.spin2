@@ -1,13 +1,13 @@
 '' =================================================================================================
 ''
 ''   File....... mpu9dof_demo.spin2
-''   Purpose.... Utility to interact with new MPU 9DOF object
+''   Purpose.... Utility to demonstration of interaction with new MPU 9DOF object
 ''   Authors.... Stephen M Moraco
 ''               -- Copyright (c) 2021 Iron Sheep Productions, LLC
 ''               -- see below for terms of use
 ''   E-mail..... stephen@ironsheep.biz
 ''   Started.... Mar 2021
-''   Updated.... 22 Mar 2021
+''   Updated.... 23 May 2021
 ''
 '' =================================================================================================
 
@@ -58,14 +58,14 @@ CON { basic constants }
 OBJ { our sensors }
 
     mpu9dofSensor   : "isp_click_mpu_9dof"                      ' our device under test
-    term            : "jm_serial_shared"                               ' terminal output
+    term            : "jm_serial_singleton"                     ' terminal output
 
 
 VAR
     long    cog
 
 PUB main() | statusOK
-
+    '' Main entry point of MPU 9DOF demo
     setup()
     quietSensor() ' set pins to output low... so we can set LA trigger
 
@@ -76,13 +76,19 @@ PUB main() | statusOK
     term.fstr0(string("initSensor()\r\n"))
     statusOK := initSensor()    ' start our i2c MPU 9DOF sensor
     if statusOK
+        term.fstr0(string("calibration()\r\n"))
+        calibrateSensor()
+        term.fstr0(string("\r\ncalibration() Complete\r\n\r\n"))
+
         term.fstr0(string("demo()\r\n"))
-        demo(1)
+        resetSensor(statusOK)
+        demo1(6)
 
     tearDown()  ' stop any cogs, if needed
     term.fstr0(string("\r\nDone\r\n"))
 
-PUB demo(loopCt) | accel_x, accel_y, accel_z, temperatureInC, decimalInC, gyro_x, gyro_y, gyro_z, mag_x, mag_y, mag_z
+PUB demo0(loopCt) | accel_x, accel_y, accel_z, temperatureInC, decimalInC, gyro_x, gyro_y, gyro_z, mag_x, mag_y, mag_z
+    '' Actual MPU 9DOF demo - read regs and display values
     if loopCt <= 0
         loopCt := 1
 
@@ -97,13 +103,78 @@ PUB demo(loopCt) | accel_x, accel_y, accel_z, temperatureInC, decimalInC, gyro_x
         temperatureInC, decimalInC := mpu9dofSensor.readTemperature()
         waitms(10)
 
-        term.fstr3(string(" Accel X : %d   |   Gyro X : %d   |   Mag X : %d \r\n"), accel_x, gyro_x, mag_x )
-        term.fstr3(string(" Accel Y : %d   |   Gyro Y : %d   |   Mag Y : %d \r\n"), accel_y, gyro_y, mag_y )
-        term.fstr3(string(" Accel Z : %d   |   Gyro Z : %d   |   Mag Z : %d \r\n"), accel_z, gyro_z, mag_z )
-        term.fstr0(string("- - - - - - - - - - - - - - - - - - - - - - - - - - - - - -\r\n" ))
+        tmpIntX, tmpDecimalX, pSignX := unscale(accel_x, 1000)
+        tmpIntY, tmpDecimalY, pSignY := unscale(accel_x, 1000)
+        tmpIntZ, tmpDecimalZ, pSignZ := unscale(accel_x, 1000)
+        term.fstr4(string(" Accel X : %d.%d   |   Gyro X : %d   |   Mag X : %d \r\n"), tmpIntX, tmpDecimalX, gyro_x, mag_x)
+        term.fstr4(string(" Accel Y : %d.%d    |   Gyro Y : %d   |   Mag Y : %d \r\n"), tmpIntY, tmpDecimalY, gyro_y, mag_y)
+        term.fstr4(string(" Accel Z : %d.%d    |   Gyro Z : %d   |   Mag Z : %d \r\n"), tmpIntZ, tmpDecimalZ , gyro_z, mag_z)
+        term.fstr0(string("- - - - - - - - - - - - - - - - - - - - - - - - - - - - - -\r\n"))
         term.fstr2(string("Temperature: %d.%d C\r\n"), temperatureInC, decimalInC)
-        term.fstr0(string("- - - - - - - - - - - - - - - - - - - - - - - - - - - - - -\r\n" ))
-        waitms(1000)
+        term.fstr0(string("- - - - - - - - - - - - - - - - - - - - - - - - - - - - - -\r\n"))
+        waitms(3000)
+
+DAT { misc messages }
+
+minusMsg    BYTE    "-",0
+plusMsg    BYTE    0
+
+floatInterp BYTE    0[30]
+
+PRI unscale(value, scale) : intPart, decimalPart, pSign
+    intPart := value / scale
+    decimalPart := value // scale
+    pSign := (value < 0) ? @minusMsg : @plusMsg
+    if decimalPart < 0
+        decimalPart := 0 - decimalPart
+    term.fstr5(string("* Value %d scale(%d) -> %s%d.%d\r\n"), value, scale, pSign, intPart, decimalPart)
+
+DAT { sample names }
+
+sample0 byte    "top",0
+sample1 byte    "toLeft",0
+sample2 byte    "toRight",0
+sample3 byte    "toFront",0
+sample4 byte    "toBack",0
+sample5 byte    "bottom",0
+
+' float conversion crap
+tmpIntX     long    0
+tmpDecimalX long    0
+pSignX      long    0
+tmpIntY     long    0
+tmpDecimalY long    0
+pSignY      long    0
+tmpIntZ     long    0
+tmpDecimalZ long    0
+pSignZ      long    0
+
+sampleNames LONG    @sample0, @sample1, @sample2, @sample3, @sample4, @sample5
+
+PUB demo1(loopCt) | pName, loopIndex, accel_x, accel_y, accel_z, gyro_x, gyro_y, gyro_z, mag_x, mag_y, mag_z
+    if loopCt <= 0
+        loopCt := 1
+
+    ' loop 1 - N times
+    pName := LONG [@sampleNames][0]
+    term.fstr1(string("\r\n-->  Set Up:  %d\r\n"), 0+1)
+    waitms(3000)
+    repeat loopIndex from 0 to loopCt - 1
+        pName := LONG [@sampleNames][loopIndex]
+        accel_x, accel_y, accel_z := mpu9dofSensor.readAccelRaw()
+        gyro_x, gyro_y, gyro_z := mpu9dofSensor.readGyroRaw()
+        mag_x, mag_y, mag_z := mpu9dofSensor.readMagRaw()
+        tmpIntX, tmpDecimalX, pSignX := unscale(accel_x, 1000)
+        tmpIntY, tmpDecimalY, pSignY := unscale(accel_y, 1000)
+        tmpIntZ, tmpDecimalZ, pSignZ := unscale(accel_z, 1000)
+        term.fstr1(string("\r\n- %d  - - - - - - - - - - -\r\n"), loopIndex+1)
+        term.fstr5(string(" Accel X : %s%d.%d   |   Gyro X : %d   |   Mag X : %d \r\n"), pSignX, tmpIntX, tmpDecimalX, gyro_x, mag_x)
+        term.fstr5(string(" Accel Y : %s%d.%d   |   Gyro Y : %d   |   Mag Y : %d \r\n"), pSignY, tmpIntY, tmpDecimalY, gyro_y, mag_y)
+        term.fstr5(string(" Accel Z : %s%d.%d   |   Gyro Z : %d   |   Mag Z : %d \r\n"), pSignZ, tmpIntZ, tmpDecimalZ, gyro_z, mag_z)
+        term.fstr0(string("- - - - - - - - - - - - - - - - - - - - - - - - - - - - - -\r\n"))
+        pName := LONG [@sampleNames][loopIndex+1]
+        term.fstr1(string("\r\n-->  Set Up:  %d\r\n"), loopIndex+2)
+        waitms(3000)
 
 PRI quietSensor()
 
@@ -114,10 +185,10 @@ PRI quietSensor()
 PRI initSensor() : ok | deviceFound
     ' find and configure our mpu9dof device
     term.fstr0(string("Setup...\r\n"))
-    mpu9dofSensor.start(MPU_9DOF_BASEPIN)                                           ' i2c @ 100kHz, no pull-ups
+    deviceFound := mpu9dofSensor.start(MPU_9DOF_BASEPIN)                                           ' i2c @ 100kHz, no pull-ups
 
     term.fstr0(string("ID device address...\r\n"))
-    deviceFound := mpu9dofSensor.idDevice()
+    deviceFound := mpu9dofSensor.deviceID()
     ok := true
     if(deviceFound <> mpu9dofSensor.DVC_NOT_FOUND)
         term.fstr1(string("Found Addr-%d\r\n"), deviceFound - 1)
@@ -125,9 +196,27 @@ PRI initSensor() : ok | deviceFound
         term.fstr0(string("ERROR: Found no devices\r\n"))
         ok := false
 
+DAT { cal data }
+
+accelBiasXYZ long    0[3]
+gyroBiasXYZ long    0[3]
+
+PUB calibrateSensor()
+    ' put sensor thru calibration paces
+    mpu9dofSensor.enableDebug(TRUE)
+
+    mpu9dofSensor.calibrateMPU9150(@gyroBiasXYZ, @accelBiasXYZ)
+    term.fstr0(string("\r\n- Calibration Offsets  - - - - - - - - - - - - - - - -\r\n"))
+    term.fstr2(string(" Accel X : %d   |   Gyro X : %d\r\n"), LONG [@accelBiasXYZ][0], LONG [@gyroBiasXYZ][0])
+    term.fstr2(string(" Accel Y : %d   |   Gyro Y : %d\r\n"), LONG [@accelBiasXYZ][1], LONG [@gyroBiasXYZ][1])
+    term.fstr2(string(" Accel Z : %d   |   Gyro Z : %d\r\n"), LONG [@accelBiasXYZ][2], LONG [@gyroBiasXYZ][2])
+    term.fstr0(string("- - - - - - - - - - - - - - - - - - - - - - - - - - - - - -\r\n"))
+
+    mpu9dofSensor.enableDebug(FALSE)
+
+PRI resetSensor(ok)
     if(ok)
         mpu9dofSensor.configDefault()
-
 
 PRI setup()
     ' start anything that needs to be
